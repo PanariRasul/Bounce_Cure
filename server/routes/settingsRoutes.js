@@ -174,22 +174,20 @@ router.delete("/delete-account", async (req, res) => {
       await tx.loginLog.deleteMany({ where: { userId } });
       await tx.oTPCode.deleteMany({ where: { userId } });
       await tx.content.deleteMany({ where: { createdBy: userId } });
-      await tx.deletedAccount.create({ data: { userEmail } });
-      await tx.user.delete({ where: { id: userId } });
-    });
 
-    // ✅ Send email notification only (user already deleted)
-    await sendNotification(null, {
-      to: userEmail,
-      subject: "Account Deleted",
-      message: "Your account has been permanently deleted from Bounce Cure.",
+      // Record deleted user
+      await tx.deletedAccount.create({ data: { userEmail } });
+
+      // Finally delete the user
+      await tx.user.delete({ where: { id: userId } });
     });
 
     res.json({ message: "Account deleted successfully" });
   } catch (err) {
     console.error("DELETE /delete-account error:", err);
-    res.status(500).json({ error: "Failed to delete account" });
+    res.status(500).json({ error: err.message || "Failed to delete account" });
   }
 });
+
 
 export default router;

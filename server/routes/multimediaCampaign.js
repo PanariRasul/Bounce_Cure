@@ -185,15 +185,15 @@ router.get("/history", protect, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const whatsappCampaigns = await prisma.whatsAppCampaign.findMany({
+    const whatsappCampaigns = await prisma.whatsappCampaign.findMany({
       where: { userId },
-      include: { whatsappRecipients: true }, // update relation name if needed
+      include: { recipients: true },
       orderBy: { createdAt: "desc" },
     });
 
-    const smsCampaigns = await prisma.sMSCampaign.findMany({
+    const smsCampaigns = await prisma.smsCampaign.findMany({
       where: { userId },
-      include: { smsRecipients: true }, // update relation name if needed
+      include: { smsRecipients: true },
       orderBy: { createdAt: "desc" },
     });
 

@@ -1,7 +1,8 @@
+// src/pages/Pricing/MultiMediaPricing.jsx
 import React, { useState } from 'react';
-import { Check, ArrowRight, MessageSquare, Phone, ArrowLeft, Send, Smartphone, Target, Shield, ChevronDown } from 'lucide-react';
+import { Check, ArrowRight, MessageSquare, Phone, ArrowLeft, Send, Target, Shield, ChevronDown } from 'lucide-react';
 
-const PricingMultiMedia = ({ selectedCurrency, currencyRates, onClose, navigate }) => {
+const MultiMediaPricing = ({ selectedCurrency, currencyRates, onClose, navigate }) => {
   const [activeTab, setActiveTab] = useState('sms');
   const [smsVolume, setSmsVolume] = useState(5000);
   const [selectedCountry, setSelectedCountry] = useState('United States');
@@ -13,7 +14,7 @@ const PricingMultiMedia = ({ selectedCurrency, currencyRates, onClose, navigate 
     { value: 100000, label: '100,000' }
   ];
 
-const smsPricingData = {
+  const smsPricingData = {
     'Argentina': { marketing: 0.0618, authentication: 0.0268, service: null },
     'Brazil': { marketing: 0.0625, authentication: 0.0068, service: null },
     'Chile': { marketing: 0.0889, authentication: 0.0045, service: null },
@@ -47,7 +48,7 @@ const smsPricingData = {
     'Rest of West Asia': { marketing: 0.0341, authentication: 0.0077, service: null },
     'Other': { marketing: 0.0604, authentication: 0.0077, service: null }
   };
-  // ✅ Currency map with updated exchange rates (as of Oct 2024)
+
   const countryCurrencyMap = {
     'Argentina': { code: 'ARS', symbol: '$', rate: 1490 },
     'Brazil': { code: 'BRL', symbol: 'R$', rate: 5.65 },
@@ -90,12 +91,10 @@ const smsPricingData = {
     const { code, rate } = getCountryCurrency();
     const converted = priceUSD * rate;
     
-    // For currencies with no decimal places (whole numbers)
     if (['JPY', 'IDR', 'CLP', 'KRW', 'VND', 'COP', 'ARS', 'NGN'].includes(code)) {
       return Math.round(converted).toLocaleString();
     }
     
-    // For total prices, show 2 decimals; for per-message prices, show 4 decimals
     return isTotal ? converted.toFixed(2) : converted.toFixed(4);
   };
 
@@ -107,58 +106,136 @@ const smsPricingData = {
       : `${symbol}${price}`;
   };
 
-  const handleSMSPlanPurchase = (planType) => {
-    const pricing = smsPricingData[selectedCountry];
-    const pricePerMsg = pricing[planType];
-    if (!pricePerMsg) {
-      alert(`${planType} SMS is not available in ${selectedCountry}`);
-      return;
-    }
+const handleSMSPlanPurchase = (planType) => {
+  const pricing = smsPricingData[selectedCountry];
+  const pricePerMsg = pricing[planType];
+  if (!pricePerMsg) {
+    alert(`${planType} SMS is not available in ${selectedCountry}`);
+    return;
+  }
 
-    const { code, symbol, rate } = getCountryCurrency();
-    const total = pricePerMsg * smsVolume * rate;
+  const { code, symbol, rate } = getCountryCurrency();
+  const totalUSD = pricePerMsg * smsVolume;
+  const convertedTotal = totalUSD * rate;
 
-    const plan = {
-      planName: `SMS ${planType}`,
-      planType: 'sms_campaign',
-      smsType: planType,
-      country: selectedCountry,
-      smsVolume,
-      pricePerMessage: pricePerMsg,
-      basePrice: total,
-      subtotal: total,
-      totalCost: total * 1.1,
-      tax: total * 0.1,
-      taxRate: 0.1,
-      currency: code,
-      currencySymbol: symbol,
-      billingPeriod: 'one-time'
+  const plan = {
+    planName: `SMS ${planType} Campaign`,
+    planType: 'multimedia-sms',
+    smsType: planType,
+    country: selectedCountry,
+    smsVolume,
+    pricePerMessage: pricePerMsg,
+    originalBasePrice: convertedTotal,
+    basePrice: convertedTotal,
+    discountAmount: 0,
+    subtotal: convertedTotal,
+    taxRate: 0.1,
+    tax: convertedTotal * 0.1,
+    totalCost: convertedTotal * 1.1,
+    billingPeriod: 'one-time',
+
+    // ✅ Add counts so Checkout/Stripe display properly
+    emailSends: smsVolume,
+    verificationCredits: smsVolume,
+    credits: smsVolume,
+
+    features: [
+      'SMS Delivery Reports',
+      'Message Tracking',
+      'Analytics Dashboard',
+      '24/7 Support'
+    ],
+    currency: code,
+    currencySymbol: symbol,
+    isFromPricingDash: false,
+    pricingModel: 'sms-campaign',
+  };
+
+  // Store plan for checkout
+  localStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
+  sessionStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
+
+  // ✅ Save selected currency for Checkout/Stripe to read
+  localStorage.setItem('selectedCurrency', code);
+  sessionStorage.setItem('selectedCurrency', code);
+
+  // Navigate to payment or sign-in
+  const isLoggedIn = !!localStorage.getItem('authToken');
+  navigate(isLoggedIn ? '/payment' : '/signin', {
+    state: { plan, redirectTo: '/payment' },
+  });
+
+};
+
+  const getSMSFeatures = (planType) => {
+    const baseFeatures = {
+      marketing: [
+        'Promotional campaigns',
+        'Marketing messages',
+        'Product announcements',
+        'Special offers & deals'
+      ],
+      authentication: [
+        'One-Time Passwords (OTP)',
+        '2-Factor Authentication',
+        'Account verification',
+        'Security alerts'
+      ],
+      service: [
+        'Order confirmations',
+        'Delivery updates',
+        'Appointment reminders',
+        'Service notifications'
+      ]
     };
-
-    localStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
-    sessionStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
-
-    const isLoggedIn = !!localStorage.getItem('authToken');
-    navigate(isLoggedIn ? '/payment' : '/signin', {
-      state: { plan, redirectTo: '/payment' }
-    });
+    return baseFeatures[planType] || [];
   };
 
   const smsPlans = [
     {
-      type: 'marketing', name: 'Marketing SMS', tagline: 'Promotional campaigns and marketing messages',
-      icon: Target, color: 'text-blue-500', borderColor: 'border-blue-500', bgGradient: 'from-blue-500/20',
-      features: ['Promotional campaigns', 'Marketing messages', 'Product announcements', 'Special offers & deals']
+      type: 'marketing', 
+      name: 'Marketing SMS', 
+      tagline: 'Promotional campaigns and marketing messages',
+      icon: Target, 
+      color: 'text-[#c2831f]', 
+      borderColor: 'border-yellow-500', 
+      bgGradient: 'from-yellow-500/40',
+      features: [
+        'Promotional campaigns', 
+        'Marketing messages', 
+        'Product announcements', 
+        'Special offers & deals'
+      ]
     },
     {
-      type: 'authentication', name: 'Authentication SMS', tagline: 'OTP and verification messages',
-      icon: Shield, color: 'text-green-500', borderColor: 'border-green-500', bgGradient: 'from-green-500/20',
-      features: ['One-Time Passwords (OTP)', '2-Factor Authentication', 'Account verification', 'Security alerts']
+      type: 'authentication', 
+      name: 'Authentication SMS', 
+      tagline: 'OTP and verification messages',
+      icon: Shield, 
+      color: 'text-[#c2831f]', 
+      borderColor: 'border-yellow-500', 
+      bgGradient: 'from-yellow-500/20',
+      features: [
+        'One-Time Passwords (OTP)', 
+        '2-Factor Authentication', 
+        'Account verification', 
+        'Security alerts'
+      ]
     },
     {
-      type: 'service', name: 'Service SMS', tagline: 'Transactional and service updates',
-      icon: Send, color: 'text-purple-500', borderColor: 'border-purple-500', bgGradient: 'from-purple-500/20',
-      features: ['Order confirmations', 'Delivery updates', 'Appointment reminders', 'Service notifications']
+      type: 'service', 
+      name: 'Service SMS', 
+      tagline: 'Transactional and service updates',
+      icon: Send, 
+      color: 'text-[#c2831f]', 
+      borderColor: 'border-yellow-500', 
+      bgGradient: 'from-yellow-500/20',
+      features: [
+        'Order confirmations', 
+        'Delivery updates', 
+        'Appointment reminders', 
+        'Service notifications'
+      ]
     }
   ];
 
@@ -182,8 +259,11 @@ const smsPricingData = {
             <div>
               <label className="block text-center text-sm font-medium text-gray-300 mb-3">SMS Volume</label>
               <div className="relative">
-                <select value={smsVolume} onChange={(e) => setSmsVolume(Number(e.target.value))}
-                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3 text-white appearance-none cursor-pointer focus:border-[#c2831f] focus:outline-none">
+                <select 
+                  value={smsVolume} 
+                  onChange={(e) => setSmsVolume(Number(e.target.value))}
+                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3 text-white appearance-none cursor-pointer focus:border-[#c2831f] focus:outline-none"
+                >
                   {smsVolumeTiers.map(tier => (
                     <option key={tier.value} value={tier.value}>{tier.label} messages</option>
                   ))}
@@ -195,11 +275,18 @@ const smsPricingData = {
             <div>
               <label className="block text-center text-sm font-medium text-gray-300 mb-3">Select Country</label>
               <div className="relative">
-                <select value={selectedCountry} onChange={(e) => setSelectedCountry(e.target.value)}
-                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3 text-white appearance-none cursor-pointer focus:border-[#c2831f] focus:outline-none">
+                <select 
+                  value={selectedCountry} 
+                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3 text-white appearance-none cursor-pointer focus:border-[#c2831f] focus:outline-none"
+                >
                   {countries.map(country => {
                     const currency = countryCurrencyMap[country];
-                    return <option key={country} value={country}>{country} ({currency.code} {currency.symbol})</option>;
+                    return (
+                      <option key={country} value={country}>
+                        {country} ({currency.code} {currency.symbol})
+                      </option>
+                    );
                   })}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -215,12 +302,14 @@ const smsPricingData = {
           {smsPlans.map((plan) => {
             const Icon = plan.icon;
             const pricePerMessage = countryPricing[plan.type];
-            const totalPrice = pricePerMessage * smsVolume;
-            const isAvailable = pricePerMessage > 0;
+            const totalPrice = pricePerMessage ? pricePerMessage * smsVolume : 0;
+            const isAvailable = pricePerMessage !== null && pricePerMessage > 0;
 
             return (
-              <div key={plan.type}
-                className={`relative bg-gray-900 rounded-2xl border-2 ${isAvailable ? plan.borderColor : 'border-gray-700 opacity-60'} overflow-hidden transition-all hover:scale-[1.02] flex flex-col h-full`}>
+              <div 
+                key={plan.type}
+                className={`relative bg-gray-900 rounded-2xl border-2 ${isAvailable ? plan.borderColor : 'border-gray-700 opacity-60'} overflow-hidden transition-all hover:scale-[1.02] flex flex-col h-full`}
+              >
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="mb-4">
                     <div className="flex items-center mb-3">
@@ -233,9 +322,15 @@ const smsPricingData = {
                   <div className="mb-6 border-b border-gray-700 pb-6">
                     {isAvailable ? (
                       <>
-                        <div className="text-4xl font-bold text-white mb-2">{formatPrice(totalPrice, true)}</div>
-                        <div className="text-sm text-gray-400">{formatPrice(pricePerMessage, false)} per message</div>
-                        <div className="text-sm text-gray-400 mt-1">for {smsVolume.toLocaleString()} messages</div>
+                        <div className="text-4xl font-bold text-white mb-2">
+                          {formatPrice(totalPrice, true)}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          {formatPrice(pricePerMessage, false)} per message
+                        </div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          for {smsVolume.toLocaleString()} messages
+                        </div>
                       </>
                     ) : (
                       <div className="text-2xl font-bold text-gray-500">Not Available</div>
@@ -254,11 +349,15 @@ const smsPricingData = {
                     </ul>
                   </div>
 
-                  <button onClick={() => handleSMSPlanPurchase(plan.type)} disabled={!isAvailable}
+                  <button 
+                    onClick={() => handleSMSPlanPurchase(plan.type)} 
+                    disabled={!isAvailable}
                     className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center transition-all mt-auto ${
-                      isAvailable ? `bg-gradient-to-r ${plan.bgGradient} to-gray-900 border-2 ${plan.borderColor} text-white hover:scale-105`
+                      isAvailable 
+                        ? `bg-gradient-to-r ${plan.bgGradient} to-gray-900 border-2 ${plan.borderColor} text-white hover:scale-105`
                         : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    }`}>
+                    }`}
+                  >
                     {isAvailable ? 'Buy Now' : 'Not Available'}
                     {isAvailable && <ArrowRight className="w-5 h-5 ml-2" />}
                   </button>
@@ -267,8 +366,6 @@ const smsPricingData = {
             );
           })}
         </div>
-
-         
       </div>
     );
   };
@@ -300,30 +397,39 @@ const smsPricingData = {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="mb-8">
-          <button onClick={onClose} className="flex items-center text-gray-300 hover:text-white transition-colors">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Main Pricing
+          <button 
+            onClick={onClose} 
+            className="flex items-center text-gray-300 hover:text-white transition-colors group"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Back to Pricing Plans</span>
           </button>
         </div>
 
         <div className="flex justify-center mb-12">
           <div className="bg-gray-800 rounded-xl p-1 inline-flex">
-            <button onClick={() => setActiveTab('sms')}
+            <button 
+              onClick={() => setActiveTab('sms')}
               className={`py-3 px-8 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
-                activeTab === 'sms' ? 'bg-[#c2831f] text-white shadow-md shadow-[#c2831f]/30'
+                activeTab === 'sms' 
+                  ? 'bg-[#c2831f] text-white shadow-md shadow-[#c2831f]/30'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
-              }`}>
+              }`}
+            >
               <MessageSquare className="w-5 h-5" />
               SMS Campaigns
             </button>
-            <button onClick={() => setActiveTab('whatsapp')}
+            <button 
+              onClick={() => setActiveTab('whatsapp')}
               className={`py-3 px-8 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
-                activeTab === 'whatsapp' ? 'bg-[#25D366] text-white shadow-md shadow-[#25D366]/30'
+                activeTab === 'whatsapp' 
+                  ? 'bg-[#25D366] text-white shadow-md shadow-[#25D366]/30'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
-              }`}>
+              }`}
+            >
               <Phone className="w-5 h-5" />
               WhatsApp Campaigns
             </button>
@@ -340,5 +446,5 @@ const smsPricingData = {
     </div>
   );
 };
-
-export default PricingMultiMedia;
+ 
+export default MultiMediaPricing;

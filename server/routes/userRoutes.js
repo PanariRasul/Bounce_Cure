@@ -20,33 +20,23 @@ const generateToken = (user) => {
  * ==============================
  *  POST /api/users/signup
  * ==============================
- * New users get a free plan + 50/50 credits
- */
-/**
- * ==============================
- *  POST /api/users/signup
- * ==============================
- * New users get a free plan + 50/50 credits
+ * Creates a new user with a free plan (50/50 email credits)
  */
 router.post("/signup", async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
 
-    // 1️⃣ Validate required fields
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 2️⃣ Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    // 3️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4️⃣ Create new user with Free Plan (50/50 credits)
     const newUser = await prisma.user.create({
       data: {
         firstName,
@@ -57,12 +47,11 @@ router.post("/signup", async (req, res) => {
         hasPurchasedBefore: false,
         contactLimit: 50,
         emailLimit: 50,
+        smsCredits: 0,
+        whatsappCredits: 0,
       },
     });
 
-    console.log(`✅ User created: ID=${newUser.id}, Email=${email}`);
-
-    // 5️⃣ Create Payment record for Free Plan - WITHOUT try-catch so errors are visible
     const paymentData = {
       userId: newUser.id,
       name: `${firstName} ${lastName}`,
@@ -73,6 +62,8 @@ router.post("/signup", async (req, res) => {
       provider: "system",
       emailVerificationCredits: 50,
       emailSendCredits: 50,
+      smsCredits: 0,
+      whatsappCredits: 0,
       amount: 0,
       currency: "usd",
       planPrice: 0,
@@ -81,22 +72,14 @@ router.post("/signup", async (req, res) => {
       cardLast4: "",
       billingAddress: "",
       paymentDate: new Date(),
-      nextPaymentDate: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000), // 100 years from now
+      nextPaymentDate: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000),
       status: "succeeded",
     };
 
-    console.log("💳 Attempting to create payment record:", paymentData);
+    await prisma.payment.create({ data: paymentData });
 
-    const freePayment = await prisma.payment.create({
-      data: paymentData,
-    });
-
-    console.log(`✅ Payment record created: ID=${freePayment.id}, Transaction=${freePayment.transactionId}`);
-
-    // 6️⃣ Generate JWT token
     const token = generateToken(newUser);
 
-    // 7️⃣ Return success response
     res.status(201).json({
       message: "User created successfully with Free Plan",
       token,
@@ -106,36 +89,17 @@ router.post("/signup", async (req, res) => {
         lastName: newUser.lastName,
         email: newUser.email,
         plan: newUser.plan,
-        contactLimit: newUser.contactLimit,
-        emailLimit: newUser.emailLimit,
-        hasPurchasedBefore: newUser.hasPurchasedBefore,
       },
       credits: {
         emailVerificationCredits: 50,
         emailSendCredits: 50,
-      },
-      paymentRecord: {
-        id: freePayment.id,
-        transactionId: freePayment.transactionId,
+        smsCredits: 0,
+        whatsappCredits: 0,
       },
     });
   } catch (error) {
     console.error("❌ SIGNUP ERROR:", error);
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-    });
-
-    // If user was created but payment failed, log it
-    if (error.message?.includes("payment")) {
-      console.error("⚠️ User was created but payment record failed!");
-    }
-
-    res.status(500).json({
-      message: "Internal server error",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -143,7 +107,7 @@ router.post("/signup", async (req, res) => {
  * ==============================
  *  POST /api/users/login
  * ==============================
- * Existing users keep previous credits, no reset
+ * Returns all credits including multimedia (SMS, WhatsApp)
  */
 router.post("/login", async (req, res) => {
   try {
@@ -153,28 +117,23 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    // 1️⃣ Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // 2️⃣ Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // 3️⃣ Generate token
     const token = generateToken(user);
 
-    // 4️⃣ Get latest payment
     let latestPayment = await prisma.payment.findFirst({
-      where: { userId: user.id },
+      where: { userId: user.id, status: "succeeded" },
       orderBy: { paymentDate: "desc" },
     });
 
-    // 5️⃣ If payment record missing (edge case), recreate with current credits
     if (!latestPayment) {
       latestPayment = await prisma.payment.create({
         data: {
@@ -185,8 +144,10 @@ router.post("/login", async (req, res) => {
           planName: user.plan || "free",
           planType: user.plan || "free",
           provider: "system",
-          emailVerificationCredits: user.contactLimit ?? 0,
-          emailSendCredits: user.emailLimit ?? 0,
+          emailVerificationCredits: user.contactLimit ?? 50,
+          emailSendCredits: user.emailLimit ?? 50,
+          smsCredits: user.smsCredits ?? 0,
+          whatsappCredits: user.whatsappCredits ?? 0,
           amount: 0,
           currency: "usd",
           planPrice: 0,
@@ -199,10 +160,9 @@ router.post("/login", async (req, res) => {
           status: "succeeded",
         },
       });
-      console.log(`🧾 Restored missing payment for existing user ${user.email}`);
+      console.log(`🧾 Restored missing payment for ${user.email}`);
     }
 
-    // 6️⃣ Respond with actual credits (no reset)
     res.json({
       message: "Login successful",
       token,
@@ -212,56 +172,17 @@ router.post("/login", async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         plan: user.plan,
-        contactLimit: user.contactLimit,
-        emailLimit: user.emailLimit,
         hasPurchasedBefore: user.hasPurchasedBefore,
       },
       credits: {
-        emailSendCredits: latestPayment.emailSendCredits,
-        emailVerificationCredits: latestPayment.emailVerificationCredits,
+        emailSendCredits: latestPayment.emailSendCredits ?? 0,
+        emailVerificationCredits: latestPayment.emailVerificationCredits ?? 0,
+        smsCredits: latestPayment.smsCredits ?? 0,
+        whatsappCredits: latestPayment.whatsappCredits ?? 0,
       },
     });
   } catch (error) {
     console.error("❌ Login error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-
-
-
-/**
- * -------------------------
- *  PUT /api/users/plan
- * -------------------------
- * Update user's plan after purchase
- */
-router.put("/plan", protect, async (req, res) => {
-  try {
-    const { planName, contactLimit, emailLimit } = req.body;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
-      data: {
-        plan: planName,
-        hasPurchasedBefore: true,
-        contactLimit: contactLimit,
-        emailLimit: emailLimit,
-      },
-    });
-
-    res.json({
-      message: "Plan updated successfully",
-      user: {
-        id: updatedUser.id,
-        plan: updatedUser.plan,
-        hasPurchasedBefore: updatedUser.hasPurchasedBefore,
-        contactLimit: updatedUser.contactLimit,
-        emailLimit: updatedUser.emailLimit,
-      },
-    });
-  } catch (error) {
-    console.error("Plan update error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -284,59 +205,51 @@ router.get("/me", protect, async (req, res) => {
       },
     });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({
-      message: "User info retrieved successfully",
-      user,
-    });
+    res.json({ message: "User info retrieved successfully", user });
   } catch (error) {
     console.error("Fetch /me error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-
+/**
+ * -------------------------
+ *  GET /api/users/credits
+ * -------------------------
+ * ✅ Returns all credit types: Email, SMS, WhatsApp
+ */
 router.get("/credits", protect, async (req, res) => {
   try {
-    // 1️⃣ Get latest payment (if user has purchased any)
     const latestPayment = await prisma.payment.findFirst({
-      where: { userId: req.user.id },
+      where: { userId: req.user.id, status: "succeeded" },
       orderBy: { paymentDate: "desc" },
     });
 
-    // 2️⃣ Get user (for free/default plan fallback)
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
         id: true,
+        plan: true,
         emailLimit: true,
         contactLimit: true,
-        plan: true,
+        smsCredits: true,
+        whatsappCredits: true,
       },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // 3️⃣ Return live credits
-    const emailSendCredits =
-      latestPayment?.emailSendCredits ??
-      user.emailLimit ??
-      50;
-
-    const emailVerificationCredits =
-      latestPayment?.emailVerificationCredits ??
-      user.contactLimit ??
-      50;
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     res.json({
       plan: user.plan,
-      emailSendCredits,
-      emailVerificationCredits,
+      emailSendCredits:
+        latestPayment?.emailSendCredits ?? user.emailLimit ?? 50,
+      emailVerificationCredits:
+        latestPayment?.emailVerificationCredits ?? user.contactLimit ?? 50,
+      smsCredits: latestPayment?.smsCredits ?? user.smsCredits ?? 0,
+      whatsappCredits:
+        latestPayment?.whatsappCredits ?? user.whatsappCredits ?? 0,
     });
   } catch (error) {
     console.error("Error fetching credits:", error);
@@ -345,10 +258,11 @@ router.get("/credits", protect, async (req, res) => {
 });
 
 /**
- * PUT /api/users/update-credits
+ * -------------------------
+ *  PUT /api/users/update-credits
+ * -------------------------
  * Deduct credits after campaign send
  */
-// ✅ PUT /api/users/update-credits
 router.put("/update-credits", protect, async (req, res) => {
   try {
     const { emailLimit } = req.body;
@@ -358,7 +272,6 @@ router.put("/update-credits", protect, async (req, res) => {
       data: { emailLimit: Number(emailLimit) },
     });
 
-    // Also update latest payment record for consistency
     await prisma.payment.updateMany({
       where: { userId: req.user.id },
       data: { emailSendCredits: Number(emailLimit) },
@@ -370,7 +283,5 @@ router.put("/update-credits", protect, async (req, res) => {
     res.status(500).json({ error: "Failed to update credits" });
   }
 });
-
-
 
 export default router;

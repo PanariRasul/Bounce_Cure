@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   CheckCircle, ChevronDown, ChevronUp, Send, Users, Settings,
   FileText, Palette, Check, Clock, Calendar, AlertCircle,
-  Mail, RefreshCw
+  Mail, RefreshCw, LogOut
 } from "lucide-react";
 import ShuffleSubjectModal from "../Components/ShuffleSubjectModal";
 import { Shuffle } from "lucide-react";
@@ -331,6 +331,7 @@ export default function CampaignBuilder() {
   const getAuthToken = () => {
     return localStorage.getItem('token');
   };
+const [showExitModal, setShowExitModal] = useState(false);
 
   // Calculate recipient count
   const getRecipientCount = () => {
@@ -765,31 +766,61 @@ const handleSendCampaign = async () => {
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="bg-black border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <header className="bg-black border-b border-gray-800 px-6 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Left Side - Title */}
           <h1 className="text-2xl font-bold text-white">Send Campaign</h1>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-400">
-                Send Email: {credits ? credits : 0}
-              </span>
-            </div>
+          {/* Middle - Shuffle Button */}
+          <div className="flex items-right ml-125">
+            <button
+              onClick={() => setShowShuffleModal(true)}
+              className="flex items-right gap-2 px-4 py-2 text-sm font-medium text-white 
+                        bg-[#c2831f] rounded-md cursor-pointer transition-all shadow-md hover:shadow-lg">
+              <Shuffle size={16} />
+              Shuffle Subject Lines & To: Mails
+            </button>
+          </div>
 
+          {/* Shuffle Modal */}
+          <ShuffleSubjectModal
+            isOpen={showShuffleModal}
+            onClose={() => setShowShuffleModal(false)}
+            canvasPages={canvasPages}
+            fromEmail={formData.fromEmail}
+            fromName={formData.fromName}
+            credits={credits}
+            onCreditsUpdate={(newCredits) => {
+              setCredits(newCredits);
+              localStorage.setItem("totalEmails", newCredits);
+            }}
+          />
+
+          {/* Right Side - Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Credits Info */}
+            <span className="text-sm text-gray-300 bg-gray-900 px-3 py-1.5 rounded-md border border-gray-700">
+              Send Email: <span className="text-[#d99c2b] font-semibold">{credits || 0}</span>
+            </span>
+
+            {/* Navigation Buttons */}
             <button
               onClick={() => navigate("/texteditor")}
-              className="px-4 py-2 text-gray-100 hover:bg-[#c2831f] rounded-md cursor-pointer"
+              className="px-4 py-2 text-sm text-white bg-transparent border border-[#d99c2b] rounded-md 
+                        hover:bg-[#d99c2b] hover:text-black transition-all duration-300"
             >
               Text Editor Page
             </button>
 
             <button
               onClick={() => navigate("/all-templates")}
-              className="px-4 py-2 text-gray-100 hover:bg-[#c2831f] rounded-md cursor-pointer"
+              className="px-4 py-2 text-sm text-white bg-transparent border border-[#d99c2b] rounded-md 
+                        hover:bg-[#d99c2b] hover:text-black transition-all duration-300"
             >
               Choose Templates
             </button>
 
+            {/* Send / Schedule Button */}
             <button
               onClick={handleSendCampaign}
               disabled={
@@ -800,54 +831,38 @@ const handleSendCampaign = async () => {
                 !completedSteps.includes("schedule") ||
                 isSending
               }
-
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-white ${!completedSteps.includes("recipients") ||
-                !completedSteps.includes("setup") ||
-                !completedSteps.includes("template") ||
-                !completedSteps.includes("schedule") ||
-                isSending
-                ? "bg-gray-800 cursor-not-allowed"
-                : "bg-[#c2831f] hover:bg-[#d09025]"
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md 
+                transition-all duration-300 shadow-md 
+                ${!completedSteps.includes("recipients") ||
+                  !completedSteps.includes("setup") ||
+                  !completedSteps.includes("template") ||
+                  !completedSteps.includes("schedule") ||
+                  isSending
+                  ? "bg-gray-800 cursor-not-allowed text-gray-500 border border-gray-700"
+                  : "bg-[#c2831f] hover:bg-[#d99c2b] text-black shadow-lg hover:shadow-[#d99c2b]/30"
                 }`}
             >
-              {formData.scheduleType === 'immediate' ? <Send size={16} /> : <Calendar size={16} />}
+              {formData.scheduleType === "immediate" ? (
+                <Send size={16} />
+              ) : (
+                <Calendar size={16} />
+              )}
               {isSending
                 ? "Processing..."
-                : formData.scheduleType === 'immediate'
+                : formData.scheduleType === "immediate"
                   ? "Send Now"
-                  : "Schedule Campaign"
-              }
+                  : "Schedule Campaign"}
             </button>
           </div>
-          <button
-              onClick={() => setShowShuffleModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-gray-100 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-md cursor-pointer transition-all"
-            >
-              <Shuffle size={16} />
-              Shuffle Subject Lines & To: Mails
-            </button>
-
-          
-               <ShuffleSubjectModal
-                  isOpen={showShuffleModal}
-                  onClose={() => setShowShuffleModal(false)}
-                  canvasPages={canvasPages}
-                  fromEmail={formData.fromEmail}
-                  fromName={formData.fromName}
-                  credits={credits}
-                  onCreditsUpdate={(newCredits) => {
-                    setCredits(newCredits);
-                    localStorage.setItem("totalEmails", newCredits);
-                  }}
-                />
         </div>
       </header>
+
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Step Tracker */}
         <div className="w-64 bg-black border-r border-gray-800 p-6 overflow-y-auto">
           <div className="mb-6">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <h2 className="text-xs font-semibold text-gray-400  tracking-wider">
               Campaign Steps
             </h2>
           </div>
@@ -892,8 +907,45 @@ const handleSendCampaign = async () => {
               })}
             </div>
           </div>
-        </div>
+          {/* Exit Option */}
+          <div className="mt-20 pt-6 border-t border-gray-800">
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="flex items-center gap-2 text-gray-400 hover:text-[#c2831f] transition-colors duration-300"
+            >
+              <LogOut size={18} />
+              <span className="text-sm font-medium">Exit Campaign</span>
+            </button>
+            {/* Exit Confirmation Modal */}
+            {showExitModal && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div className="bg-[#111] border border-gray-800 rounded-xl p-8 w-[90%] max-w-md text-center shadow-xl">
+                  <h2 className="text-lg font-semibold text-white mb-3">
+                    Exit Campaign Setup?
+                  </h2>
+                  <p className="text-gray-400 text-sm mb-6">
+                    Are you sure you want to exit? All unsaved progress will be lost.
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={() => setShowExitModal(false)}
+                      className="px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-800 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-4 py-2 rounded-md bg-[#c2831f] text-black font-semibold hover:bg-[#d99c2b] transition-all"
+                    >
+                      Yes, Exit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
+        </div>
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-black">
           <div className="max-w-3xl mx-auto">

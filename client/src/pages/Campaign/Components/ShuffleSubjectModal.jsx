@@ -388,7 +388,7 @@ const ShuffleSubjectModal = ({
                 </div>
               </label>
 
-              <label className="flex items-center">
+              {/* <label className="flex items-center">
                 <input
                   type="radio"
                   name="scheduleType"
@@ -404,7 +404,7 @@ const ShuffleSubjectModal = ({
                   </div>
                   <div className="text-sm text-gray-400">Pick a specific date and time</div>
                 </div>
-              </label>
+              </label> */}
             </div>
 
             {/* ✅ SCHEDULE DATE/TIME INPUTS */}

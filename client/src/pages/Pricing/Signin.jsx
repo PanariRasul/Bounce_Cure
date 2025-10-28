@@ -244,21 +244,22 @@ const Signin = () => {
                                 </h2>
 
                                 <p className="text-gray-300 text-sm mt-2">
-                                Amount:{" "}
-                                <span className="text-green-400 font-medium">
-                                    {planDetails.currencySymbol || "$"}
-                                    {planDetails.basePrice
-                                    ? planDetails.basePrice.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                        })
-                                    : "—"}
-                                </span>
-                                {planDetails.billingPeriod &&
-                                    planDetails.billingPeriod !== "one-time" && (
-                                    <span className="text-gray-400"> / {planDetails.billingPeriod}</span>
+                                    Amount:{" "}
+                                    <span className="text-green-400 font-medium">
+                                        {planDetails.currencySymbol || "$"}
+                                        {planDetails.basePrice
+                                        ? planDetails.basePrice.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                            })
+                                        : "—"}
+                                    </span>
+                                    {planDetails.billingPeriod &&
+                                        planDetails.billingPeriod !== "one-time" && (
+                                        <span className="text-gray-400"> / {planDetails.billingPeriod}</span>
                                     )}
-                                </p>
+                                    </p>
+
                             </div>
                         )}
 

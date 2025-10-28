@@ -125,7 +125,7 @@ Sent from BounceCure Contact Form
 
     // SendGrid message object
     const msg = {
-      to: "keithburtb2bleads@gmail.com",
+      to: "support@bouncecure.com",
       from: {
         email: "info@bouncecure.com", // MUST be verified in SendGrid
         name: "BounceCure Contact",
@@ -155,6 +155,41 @@ Sent from BounceCure Contact Form
 
     // Send email
     const response = await sgMail.send(msg);
+
+    // === Auto-reply email to the user ===
+    const autoReply = {
+      to: email,
+      from: {
+        email: "info@bouncecure.com", // same verified sender
+        name: "BounceCure Support",
+      },
+      subject: "Thanks for contacting BounceCure!",
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+          <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, #c2831f 0%, #d99c2b 100%); padding: 25px; text-align: center;">
+              <h1 style="margin: 0; color: #fff; font-size: 24px;">Thank You for Reaching Out!</h1>
+            </div>
+            <div style="padding: 25px; color: #333;">
+              <p>Hi <strong>${fullname}</strong>,</p>
+              <p>We’ve received your message and our team will get back to you within <strong>one business day</strong>.</p>
+              <p>Here’s a quick summary of your message:</p>
+              <blockquote style="border-left: 4px solid #c2831f; margin: 15px 0; padding-left: 10px; color: #555;">
+                ${message}
+              </blockquote>
+              <p>Meanwhile, you can learn more about us at <a href="https://bouncecure.com" style="color:#c2831f;">bouncecure.com</a>.</p>
+              <p>Warm regards,<br><strong>The BounceCure Team</strong></p>
+            </div>
+            <div style="background: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #777;">
+              &copy; ${new Date().getFullYear()} BounceCure. All rights reserved.
+            </div>
+          </div>
+        </div>
+      `,
+    };
+
+    await sgMail.send(autoReply);
+
     
     console.log(`✅ Email sent successfully from ${email} (${fullname})`);
     console.log('SendGrid Response Status:', response[0].statusCode);

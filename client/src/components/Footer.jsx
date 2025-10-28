@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaTwitter, FaFacebookF, FaLinkedinIn, FaGithub } from "react-icons/fa";
+import { FaTwitter, FaFacebookF, FaLinkedinIn, FaGithub, FaYoutube } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { GoHeartFill } from "react-icons/go";
 
@@ -131,20 +131,26 @@ const Footer = () => {
           {/* Social Icons */}
           <div className="flex justify-center space-x-6 mb-12">
             {[
-              { to: "#", icon: <FaTwitter size={24} /> },
-              { to: "#", icon: <FaFacebookF size={24} /> },
-              { to: "#", icon: <FaLinkedinIn size={24} /> },
-             ].map((item, index) => (
-              <Link
+              { href: "https://x.com/BounceCure", icon: <FaTwitter size={24} /> },
+              { href: "https://www.facebook.com/BounceCure", icon: <FaFacebookF size={24} /> },
+              { href: "https://www.linkedin.com/in/bounce-cure-aa4936390/", icon: <FaLinkedinIn size={24} /> },
+              { href: "https://www.youtube.com/@bouncecure", icon: <FaYoutube size={24} /> },
+            ].map((item, index) => (
+              <a
                 key={index}
-                to={item.to}
-                className="group relative bg-white text-black rounded-full p-4 transition-all duration-500 hover:scale-110 hover:rotate-12 backdrop-blur-sm hover:bg-black hover:text-white"
+                href={item.href}
+                target="_blank"              // ✅ opens in a new tab
+                rel="noopener noreferrer"   // ✅ security best practice
+                className="group relative bg-white text-black rounded-full p-4 transition-all duration-500 
+                          hover:scale-110 hover:rotate-12 backdrop-blur-sm hover:bg-[#bd7a0f] hover:text-white"
               >
                 {item.icon}
-                <div className="absolute inset-0 rounded-full bg-black scale-0 group-hover:scale-90 transition-transform duration-300 -z-10"></div>
-              </Link>
+                <div className="absolute inset-0 rounded-full bg-[#bd7a0f] scale-0 group-hover:scale-90 
+                                transition-transform duration-300 -z-10"></div>
+              </a>
             ))}
           </div>
+
 
           {/* Navigation */}
           <nav className="flex flex-wrap justify-center gap-8 text-lg ">
@@ -166,7 +172,7 @@ const Footer = () => {
                 className="relative group font-medium hover:text-gray-300 transition-all duration-300 cursor-pointer"
               >
                 {label}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#bd7a0f] group-hover:w-full transition-all duration-300"></span>
               </button>
             ))}
           </nav>

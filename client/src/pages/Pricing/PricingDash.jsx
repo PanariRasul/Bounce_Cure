@@ -340,12 +340,13 @@ const PricingDash = () => {
     return (
       <DashboardLayout>
         <div className="mt-20">
-          <MultiMediaPricing 
+          <MultiMediaPricing
             selectedCurrency={selectedCurrency}
             currencyRates={currencyRates}
             onClose={() => setShowMultiMedia(false)}
             navigate={navigate}
           />
+
         </div>
       </DashboardLayout>
     );
@@ -633,6 +634,8 @@ const PricingDash = () => {
       isFromPricingDash: true,
       isNewUser: isNewCustomer,
       currency: selectedCurrency,
+      currencySymbol: currencySymbols[selectedCurrency] || "$", // ✅ Add this line
+
     };
 
     localStorage.setItem("pendingUpgradePlan", JSON.stringify(planDetails));

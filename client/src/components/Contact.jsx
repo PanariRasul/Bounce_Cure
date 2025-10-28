@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import { Check } from "lucide-react"; // ✅ Add this import at the top with your other icons
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -22,7 +23,7 @@ const ContactPage = () => {
     phone: "",
     service: "general",
     message: "",
-    subscribe: false,
+    subscribe: true,
   });
 
   const [errors, setErrors] = useState({});
@@ -416,19 +417,30 @@ const ContactPage = () => {
                   )}
               </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  name="subscribe"
-                  id="subscribe"
-                  checked={formData.subscribe}
-                  onChange={handleChange}
-                  className="w-5 h-5 rounded bg-white/10 border-white/20"
-                />
-                <label htmlFor="subscribe" className="text-gray-300 text-sm">
+              <div className="flex items-center gap-3 relative">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    name="subscribe"
+                    id="subscribe"
+                    checked={formData.subscribe}
+                    onChange={handleChange}
+                    className="peer appearance-none w-5 h-5 border border-[#d99c2b] rounded-md cursor-pointer 
+                              transition-all duration-300 checked:bg-[#d99c2b] checked:border-[#d99c2b]"
+                  />
+                  <Check
+                    className="absolute w-3.5 h-3.5 text-black pointer-events-none opacity-0 peer-checked:opacity-100 
+                              transition-opacity duration-200 left-[3px] top-[3px]"
+                  />
+                </div>
+                <label
+                  htmlFor="subscribe"
+                  className="text-gray-300 text-sm cursor-pointer select-none hover:text-[#d99c2b] transition-colors"
+                >
                   Subscribe to product updates
                 </label>
               </div>
+
 
               <button
                 type="submit"

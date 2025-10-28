@@ -63,10 +63,9 @@ export default function Checkout() {
             setPlan(incomingPlan);
             setIsNewUser(incomingPlan.isNewUser !== false);
             setSelectedCurrency(
-                incomingPlan.currency ??
-                localStorage.getItem("selectedCurrency") ??
-                "USD"
+            incomingPlan.currency ?? localStorage.getItem("selectedCurrency") ?? "USD"
             );
+
         } else {
             const storedPlan = localStorage.getItem("pendingUpgradePlan");
             if (storedPlan) {
@@ -147,9 +146,9 @@ export default function Checkout() {
     ];
 
     // Add UPI only if currency is INR
-    if (selectedCurrency === "INR") {
-        paymentMethods.push({ id: "UPI", name: "UPI", icon: Wallet });
-    }
+    // if (selectedCurrency === "INR") {
+    //     paymentMethods.push({ id: "UPI", name: "UPI", icon: Wallet });
+    // }
 
     // FIXED: Display email sends and validations with proper billing period context
     const getDisplayEmailSends = () => {
@@ -265,17 +264,18 @@ export default function Checkout() {
                                 <>
                                     <div className="flex justify-between text-slate-300">
                                         <span>Plan:</span>
-                                        <span className="font-semibold text-white">{plan.planName}</span>
+                                        <span className="font-semibold text-white">
+                                            {plan.planName}
+                                            {plan.verificationCredits || plan.smsVolume || plan.emailSends ? (
+                                            <span className="text-gray-400 text-sm ml-1">
+                                                — {plan.verificationCredits || plan.smsVolume || plan.emailSends} credits
+                                            </span>
+                                            ) : null}
+                                        </span>
                                     </div>
 
+
                                     <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
-                                        {/* <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center">
-                                                <Users size={16} className="text-blue-400 mr-2" />
-                                                <span className="text-sm text-slate-300">Contacts:</span>
-                                            </div>
-                                            <span className="font-semibold text-white">{plan.slots?.toLocaleString() || plan.contactCount?.toLocaleString() || '0'}</span>
-                                        </div> */}
                                         
                                         {/* FIXED: Show email sends with proper period label */}
                                         <div className="flex items-center justify-between mb-3">
@@ -311,7 +311,7 @@ export default function Checkout() {
                                     {isNewUser && (
                                         <>
                                             <div className="flex justify-between text-green-400">
-                                                <span>Discounts (50% off for 12 months):</span>
+                                                <span>Discounts :</span>
                                                 <span>− {formatCurrency(getDiscountAmount(), selectedCurrency)}</span>
                                             </div>
                                             <div className="bg-green-950/30 border border-green-800/30 text-green-300 p-3 rounded-lg mt-4">

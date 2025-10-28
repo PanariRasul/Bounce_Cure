@@ -5,6 +5,7 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Link, Send, Eye
 } from 'lucide-react';
+import { LogOut, CheckCircle } from "lucide-react";
 
 export default function CampaignTextEditor() {
   const navigate = useNavigate();
@@ -91,24 +92,56 @@ export default function CampaignTextEditor() {
       },
     });
   };
+const [showExitModal, setShowExitModal] = useState(false);
 
   return (
     <div className="flex h-screen bg-black text-white">
       {/* Editor Section */}
       <div className={`${showPreview ? 'w-1/2' : 'w-full'} flex flex-col border-r border-gray-800 transition-all`}>
-       <div className="bg-black border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <div className="bg-black border-b border-gray-800 px-6 py-4 flex items-center justify-between">
             <div>
                 <h1 className="text-2xl font-bold text-[#c2831f]">Campaign Text Editor</h1>
                 <div className="text-sm text-gray-400 mt-1">Create and format your email content</div>
             </div>
 
-            <button 
-                onClick={() => navigate("/email-campaign")} 
-                className="px-5 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm font-medium"
-            >
-                Exit
-            </button>
-            </div>
+              {/* Exit Option */}
+              <div className="border p-2 border-gray-800">
+                <button
+                  onClick={() => setShowExitModal(true)}
+                  className="flex items-center gap-2 text-gray-400 hover:text-[#c2831f] transition-colors duration-300"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm font-medium">Exit Campaign</span>
+                </button>
+                {/* Exit Confirmation Modal */}
+                  {showExitModal && (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                      <div className="bg-[#111] border border-gray-800 rounded-xl p-8 w-[90%] max-w-md text-center shadow-xl">
+                        <h2 className="text-lg font-semibold text-white mb-3">
+                          Exit Campaign Text Editor?
+                        </h2>
+                        <p className="text-gray-400 text-sm mb-6">
+                          Are you sure you want to exit? All unsaved progress will be lost.
+                        </p>
+                        <div className="flex justify-center gap-4">
+                          <button
+                            onClick={() => setShowExitModal(false)}
+                            className="px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-800 transition-all"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => navigate('/send-campaign')}
+                            className="px-4 py-2 rounded-md bg-[#c2831f] text-black font-semibold hover:bg-[#d99c2b] transition-all"
+                          >
+                            Yes, Exit
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </div>
+        </div>
 
 
         {/* Toolbar */}

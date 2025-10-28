@@ -78,6 +78,9 @@ router.post("/create-payment-intent", async (req, res) => {
  */
 // ✅ Save Payment + Generate & Email Invoice
 
+// Updated /api/stripe/save-payment endpoint - stripe.js
+// Replace the entire endpoint (around line 85-250)
+
 router.post("/save-payment", async (req, res) => {
   try {
     const {
@@ -93,12 +96,27 @@ router.post("/save-payment", async (req, res) => {
       transactionId,
       userId,
       provider,
-      contacts,
       currency,
       paymentMethod,
       cardLast4,
       status,
+
+      // ✅ ALL credit types from frontend
+      emailVerificationCredits,
+      emailSendCredits,
+      smsCredits,
+      whatsappCredits,
     } = req.body;
+
+    console.log("📥 Received payment data:", {
+      userId,
+      planName,
+      planType,
+      emailVerificationCredits,
+      emailSendCredits,
+      smsCredits,
+      whatsappCredits,
+    });
 
     if (!name || !planName || !email || !transactionId || !userId) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -110,7 +128,14 @@ router.post("/save-payment", async (req, res) => {
     }
 
     const paymentDateObj = paymentDate ? new Date(paymentDate) : new Date();
-    const nextPaymentDate = getNextPaymentDate(paymentDateObj, planType);
+
+    // ✅ Normalize plan type for SMS / WhatsApp / Email
+    let normalizedPlanType = planType?.toLowerCase() || "";
+    const lowerPlanName = planName?.toLowerCase() || "";
+    if (lowerPlanName.includes("sms")) normalizedPlanType = "sms";
+    else if (lowerPlanName.includes("whatsapp")) normalizedPlanType = "whatsapp";
+    else if (lowerPlanName.includes("email")) normalizedPlanType = "email";
+    const nextPaymentDate = getNextPaymentDate(paymentDateObj, normalizedPlanType);
 
     // 🧩 Validate user
     const user = await prisma.user.findUnique({ where: { id: userIdInt } });
@@ -118,34 +143,25 @@ router.post("/save-payment", async (req, res) => {
       return res.status(400).json({ error: `User with ID ${userIdInt} not found` });
     }
 
-    // 🎁 FREE PLAN - Always force 50/50 credits
-    let emailVerificationCredits;
-    let emailSendCredits;
+    console.log("👤 Current user credits:", {
+      contactLimit: user.contactLimit,
+      emailLimit: user.emailLimit,
+      smsCredits: user.smsCredits,
+      whatsappCredits: user.whatsappCredits,
+    });
 
-    if (planName?.toLowerCase() === "free") {
-      emailVerificationCredits = 50;  // ✅ ALWAYS 50 for free
-      emailSendCredits = 50;           // ✅ ALWAYS 50 for free
-      console.log("🎁 FREE PLAN DETECTED - Forced 50/50 credits");
-    } else {
-      // 💳 PAID PLANS - Extract from request body
-      emailVerificationCredits = Number(
-        req.body.emailVerificationCredits ||
-          req.body.verificationCredits ||
-          req.body.emailValidations ||
-          req.body.contacts ||
-          0
-      );
-      emailSendCredits = Number(
-        req.body.emailSendCredits ||
-          req.body.emails ||
-          req.body.emailLimit ||
-          0
-      );
-      console.log("💳 PAID PLAN - Credits from request:", {
-        emailVerificationCredits,
-        emailSendCredits,
-      });
-    }
+    // ✅ Compute final credits
+    const finalEmailVerificationCredits = Number(emailVerificationCredits || 0);
+    const finalEmailSendCredits = Number(emailSendCredits || 0);
+    const finalSmsCredits = Number(smsCredits || 0);
+    const finalWhatsappCredits = Number(whatsappCredits || 0);
+
+    console.log("💳 Final Credit Breakdown:", {
+      finalEmailVerificationCredits,
+      finalEmailSendCredits,
+      finalSmsCredits,
+      finalWhatsappCredits,
+    });
 
     // 💾 Build payment object
     const paymentData = {
@@ -153,16 +169,18 @@ router.post("/save-payment", async (req, res) => {
       name,
       email,
       transactionId,
-      planName: planName?.toLowerCase(),
-      planType: planType?.toLowerCase(),
+      planName: lowerPlanName,
+      planType: normalizedPlanType,
       provider: provider || "system",
-      emailVerificationCredits,  // ✅ Will be 50 for free, custom for paid
-      emailSendCredits,           // ✅ Will be 50 for free, custom for paid
-      amount: planName?.toLowerCase() === "free" ? 0 : Number(amount),
+      emailVerificationCredits: finalEmailVerificationCredits,
+      emailSendCredits: finalEmailSendCredits,
+      smsCredits: finalSmsCredits,
+      whatsappCredits: finalWhatsappCredits,
+      amount: lowerPlanName === "free" ? 0 : Number(amount),
       currency: currency || "usd",
-      planPrice: planName?.toLowerCase() === "free" ? 0 : Number(planPrice) || Number(amount),
+      planPrice: lowerPlanName === "free" ? 0 : Number(planPrice) || Number(amount),
       discount: Number(discount) || 0,
-      paymentMethod: planName?.toLowerCase() === "free" ? "system" : (paymentMethod || "card"),
+      paymentMethod: lowerPlanName === "free" ? "system" : (paymentMethod || "card"),
       cardLast4: cardLast4 || "",
       billingAddress: billingAddress || "",
       paymentDate: paymentDateObj,
@@ -170,81 +188,70 @@ router.post("/save-payment", async (req, res) => {
       status: status || "succeeded",
     };
 
-    console.log("💾 Final paymentData being saved:", {
-      planName: paymentData.planName,
-      emailVerificationCredits: paymentData.emailVerificationCredits,
-      emailSendCredits: paymentData.emailSendCredits,
-      amount: paymentData.amount,
-    });
-
     // ✅ Save payment in DB
     const payment = await prisma.payment.create({ data: paymentData });
+    console.log("✅ Payment saved to DB:", payment.id);
 
-    console.log("✅ Payment saved to DB:", {
-      id: payment.id,
-      emailVerificationCredits: payment.emailVerificationCredits,
-      emailSendCredits: payment.emailSendCredits,
-    });
+    // ✅ Update user credits dynamically (always add to existing)
+    const updatedUserData = {
+      plan: lowerPlanName,
+      hasPurchasedBefore: true,
+      contactLimit: (user.contactLimit || 0) + finalEmailVerificationCredits,
+      emailLimit: (user.emailLimit || 0) + finalEmailSendCredits,
+      smsCredits: (user.smsCredits || 0) + finalSmsCredits,
+      whatsappCredits: (user.whatsappCredits || 0) + finalWhatsappCredits,
+    };
 
-    // ✅ Update user credits
-// ✅ Fetch existing user first
- 
+    console.log("📝 Updating user:", updatedUserData);
 
-    // ✅ Add new credits on top of existing
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userIdInt },
-      data: {
-        plan: planName?.toLowerCase(),
-        hasPurchasedBefore: true,
-        contactLimit: (user.contactLimit || 0) + emailVerificationCredits,
-        emailLimit: (user.emailLimit || 0) + emailSendCredits,
-      },
+      data: updatedUserData,
     });
 
-
-    console.log("✅ User credits updated:", {
-      userId: userIdInt,
-      contactLimit: emailVerificationCredits,
-      emailLimit: emailSendCredits,
+    console.log("✅ User updated:", {
+      id: updatedUser.id,
+      smsCredits: updatedUser.smsCredits,
+      whatsappCredits: updatedUser.whatsappCredits,
     });
 
-    // 🧾 Generate and send invoice (even for Free)
-    const pdfBuffer = await generateInvoice(payment);
-    const pdfBuffers = await generatePrintingInvoice(payment);
-    const html = invoiceEmailTemplate({
-      transactionId: payment.transactionId,
-      planName: payment.planName,
-      total: payment.amount,
-      currency: payment.currency?.toUpperCase() || "USD",
-    });
+    // 🧾 Generate and send invoice
+    try {
+      const pdfBuffer = await generateInvoice(payment);
+      const pdfBuffers = await generatePrintingInvoice(payment);
 
-    await sendInvoiceEmail({
-      to: payment.email,
-      subject: `Invoice ${payment.transactionId} - ${payment.planName}`,
-      html,
-      pdfBuffer,
-      pdfBuffers,
-      fileName: `invoice-${payment.transactionId}.pdf`,
-    });
-
-    res.json({
-      success: true,
-      message: "Payment and credits saved successfully",
-      payment: {
-        id: payment.id,
+      const html = invoiceEmailTemplate({
         transactionId: payment.transactionId,
         planName: payment.planName,
-        emailVerificationCredits: payment.emailVerificationCredits,
-        emailSendCredits: payment.emailSendCredits,
-        amount: payment.amount,
-      },
+        total: payment.amount,
+        currency: payment.currency?.toUpperCase() || "USD",
+      });
+
+      await sendInvoiceEmail({
+        to: payment.email,
+        subject: `Invoice ${payment.transactionId} - ${payment.planName}`,
+        html,
+        pdfBuffer,
+        pdfBuffers,
+        fileName: `invoice-${payment.transactionId}.pdf`,
+      });
+      console.log("✅ Invoice sent successfully");
+    } catch (invoiceError) {
+      console.error("⚠️ Invoice generation/sending failed:", invoiceError);
+    }
+
+    // ✅ Respond success
+    res.json({
+      success: true,
+      message: "Payment and user credits saved successfully",
+      payment,
+      updatedUser,
     });
   } catch (err) {
     console.error("❌ Error saving payment:", err);
     res.status(500).json({ error: err.message });
   }
 });
- 
 
 
 // 🕒 Every midnight, check and expire outdated plans

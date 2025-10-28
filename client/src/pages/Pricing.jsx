@@ -243,12 +243,14 @@ const handlePlanSelection = (planName, planType) => {
   const monthlyPriceUSD = planType === 'free' ? 0 : pricing[planType];
   const periodInfo = billingPeriods[billingPeriod];
 
-  // ✅ Detect if user is logged in (existing user)
+  // ✅ Detect user login and previous purchase
   const isLoggedIn = !!localStorage.getItem("authToken") || !!localStorage.getItem("userEmail");
-  const isNewUser = !isLoggedIn;
+  const hasPurchasedBefore = localStorage.getItem("hasPurchasedBefore") === "true";
+  const isNewUser = !hasPurchasedBefore;
 
-  // ✅ Apply 50% discount only for new users
+  // ✅ Apply 50% discount only for first-time buyers
   const discountPercent = isNewUser ? 0.5 : 0;
+
   const discountedMonthlyPriceUSD = monthlyPriceUSD * (1 - discountPercent);
   const periodPriceUSD = calculatePrice(discountedMonthlyPriceUSD);
   const originalPeriodPriceUSD = calculatePrice(monthlyPriceUSD);
@@ -422,7 +424,9 @@ const handlePlanSelection = (planName, planType) => {
     
     // Apply 50% discount correctly
     const originalMonthlyUSD = monthlyPriceUSD;
-    const discountedMonthlyUSD = originalMonthlyUSD * 0.5;
+    const hasPurchasedBefore = localStorage.getItem("hasPurchasedBefore") === "true";
+    const isNewUser = !hasPurchasedBefore;
+    const discountedMonthlyUSD = isNewUser ? originalMonthlyUSD * 0.5 : originalMonthlyUSD;
     const periodPriceUSD = calculatePrice(discountedMonthlyUSD);
     const originalPeriodPriceUSD = calculatePrice(originalMonthlyUSD);
     
@@ -483,9 +487,12 @@ const handlePlanSelection = (planName, planType) => {
                   </div>
                 </div>
                 <div className="ml-0 sm:ml-2 flex flex-wrap gap-2 mt-2 sm:mt-0">
-                  <div className="text-green-500 font-bold text-[13px] bg-green-500/10 px-2 py-1 rounded">
-                    50% OFF
-                  </div>
+                  {isNewUser && (
+                    <div className="text-green-500 font-bold text-[13px] bg-green-500/10 px-2 py-1 rounded">
+                      50% OFF
+                    </div>
+                  )}
+
                 </div>
                 <div className="text-sm text-gray-400 mt-2">
                   {formatPrice(getPerContactRate(planKey, contactCount))} per contact

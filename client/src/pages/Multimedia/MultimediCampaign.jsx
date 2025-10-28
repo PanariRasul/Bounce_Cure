@@ -47,6 +47,36 @@ function MultimediaCampaign() {
     fetchCampaigns();
   }, []);
 
+  const [credits, setCredits] = useState({ sms: 0, whatsapp: 0 });
+  // 💰 Fetch user credits
+
+useEffect(() => {
+  const fetchCredits = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/credits`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const data = await res.json();
+      console.log("📊 Credits fetched:", data);
+
+      setCredits({
+        sms: data.smsCredits || 0,
+        whatsapp: data.whatsappCredits || 0,
+      });
+    } catch (err) {
+      console.error("❌ Failed to fetch credits:", err);
+    }
+  };
+
+  fetchCredits();
+}, []);
+
+
+
+
   // ✅ Check Twilio configuration on page load
 useEffect(() => {
   const checkTwilioConfig = async () => {
@@ -163,6 +193,18 @@ useEffect(() => {
               Manage, analyze, and create WhatsApp & SMS marketing campaigns
             </p>
           </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 text-center">
+            <div className="text-2xl font-bold text-[#007BFF]">{credits.sms}</div>
+            <div className="text-sm text-gray-400">SMS Credits</div>
+          </div>
+          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 text-center">
+            <div className="text-2xl font-bold text-[#25D366]">{credits.whatsapp}</div>
+            <div className="text-sm text-gray-400">WhatsApp Credits</div>
+          </div>
+        </div>
+
+
           <div className="flex gap-3">
             <button
               onClick={() => navigate("/twilio-setup")}

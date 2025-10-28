@@ -27,6 +27,8 @@ model User {
   hasPurchasedBefore Boolean @default(false)
   contactLimit       Int     @default(50)
   emailLimit         Int     @default(50)
+  smsCredits         Int?    @default(0) // ✅ NEW
+  whatsappCredits    Int?    @default(0) // ✅ NEW
 
   // Relations (leave them as-is)
   apiKeys             ApiKey[]
@@ -451,35 +453,34 @@ model MmsRecipient {
 }
 
 model Payment {
-  id                       Int    @id @default(autoincrement())
+  id                       Int       @id @default(autoincrement())
   userId                   Int
   email                    String
   name                     String
-  // ✅ New fields replacing old "contacts"
-  emailVerificationCredits Int    @default(0)
-  emailSendCredits         Int    @default(0)
+  emailVerificationCredits Int       @default(0)
+  emailSendCredits         Int       @default(0)
+  smsCredits               Int?      @default(0)
+  whatsappCredits          Int?      @default(0)
+  transactionId            String    @unique
+  planName                 String
+  planType                 String
+  provider                 String
+  amount                   Float
+  currency                 String
+  planPrice                Float
+  discount                 Float?
+  paymentMethod            String
+  cardLast4                String?
+  billingAddress           String?
+  paymentDate              DateTime
+  nextPaymentDate          DateTime?
+  status                   String
+  notified                 Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  transactionId String @unique
-  planName      String
-  planType      String
-  provider      String
-
-  amount          Float
-  currency        String
-  planPrice       Float
-  discount        Float?
-  paymentMethod   String
-  cardLast4       String?
-  billingAddress  String?
-  paymentDate     DateTime
-  nextPaymentDate DateTime?
-  status          String
-  notified        Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // ✅ Relation to User model
-  User User @relation(fields: [userId], references: [id])
+  // ✅ Enable cascade delete
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ScheduledCampaign {

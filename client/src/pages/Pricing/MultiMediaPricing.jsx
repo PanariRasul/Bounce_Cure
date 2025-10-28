@@ -106,42 +106,67 @@ const MultiMediaPricing = ({ selectedCurrency, currencyRates, onClose, navigate 
       : `${symbol}${price}`;
   };
 
-  const handleSMSPlanPurchase = (planType) => {
-    const pricing = smsPricingData[selectedCountry];
-    const pricePerMsg = pricing[planType];
-    if (!pricePerMsg) {
-      alert(`${planType} SMS is not available in ${selectedCountry}`);
-      return;
-    }
+const handleSMSPlanPurchase = (planType) => {
+  const pricing = smsPricingData[selectedCountry];
+  const pricePerMsg = pricing[planType];
+  if (!pricePerMsg) {
+    alert(`${planType} SMS is not available in ${selectedCountry}`);
+    return;
+  }
 
-    const { code, symbol, rate } = getCountryCurrency();
-    const total = pricePerMsg * smsVolume * rate;
+  const { code, symbol, rate } = getCountryCurrency();
+  const totalUSD = pricePerMsg * smsVolume;
+  const convertedTotal = totalUSD * rate;
 
-    const plan = {
-      planName: `SMS ${planType}`,
-      planType: 'sms_campaign',
-      smsType: planType,
-      country: selectedCountry,
-      smsVolume,
-      pricePerMessage: pricePerMsg,
-      basePrice: total,
-      subtotal: total,
-      totalCost: total * 1.1,
-      tax: total * 0.1,
-      taxRate: 0.1,
-      currency: code,
-      currencySymbol: symbol,
-      billingPeriod: 'one-time'
-    };
+  const plan = {
+    planName: `SMS ${planType} Campaign`,
+    planType: 'multimedia-sms',
+    smsType: planType,
+    country: selectedCountry,
+    smsVolume,
+    pricePerMessage: pricePerMsg,
+    originalBasePrice: convertedTotal,
+    basePrice: convertedTotal,
+    discountAmount: 0,
+    subtotal: convertedTotal,
+    taxRate: 0.1,
+    tax: convertedTotal * 0.1,
+    totalCost: convertedTotal * 1.1,
+    billingPeriod: 'one-time',
 
-    localStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
-    sessionStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
+    // ✅ Add counts so Checkout/Stripe display properly
+    emailSends: smsVolume,
+    verificationCredits: smsVolume,
+    credits: smsVolume,
 
-    const isLoggedIn = !!localStorage.getItem('authToken');
-    navigate(isLoggedIn ? '/payment' : '/signin', {
-      state: { plan, redirectTo: '/payment' }
-    });
+    features: [
+      'SMS Delivery Reports',
+      'Message Tracking',
+      'Analytics Dashboard',
+      '24/7 Support'
+    ],
+    currency: code,
+    currencySymbol: symbol,
+    isFromPricingDash: false,
+    pricingModel: 'sms-campaign',
   };
+
+  // Store plan for checkout
+  localStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
+  sessionStorage.setItem('pendingUpgradePlan', JSON.stringify(plan));
+
+  // ✅ Save selected currency for Checkout/Stripe to read
+  localStorage.setItem('selectedCurrency', code);
+  sessionStorage.setItem('selectedCurrency', code);
+
+  // Navigate to payment or sign-in
+  const isLoggedIn = !!localStorage.getItem('authToken');
+  navigate(isLoggedIn ? '/payment' : '/signin', {
+    state: { plan, redirectTo: '/payment' },
+  });
+
+};
+
 
   const smsPlans = [
     {
@@ -337,5 +362,5 @@ const MultiMediaPricing = ({ selectedCurrency, currencyRates, onClose, navigate 
     </div>
   );
 };
-
+ 
 export default MultiMediaPricing;

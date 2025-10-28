@@ -11,6 +11,8 @@ import {
   Info, Check
 } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_VRI_URL;
+
 const Automation = () => {
   const [logs, setLogs] = useState([]);
   const [scheduledCampaigns, setScheduledCampaigns] = useState([]);
@@ -34,11 +36,12 @@ const Automation = () => {
   const [showTriggerMessage, setShowTriggerMessage] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  
   // Fetch automation logs
   const fetchAutomationData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/automation/logs", {
+      const response = await fetch(`${API_URL}/api/automation/logs`, {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
  
@@ -75,7 +78,7 @@ const fetchScheduledCampaigns = async () => {
     setLoading(true);
     const token = localStorage.getItem("token");
 
-    const response = await fetch("http://localhost:5000/api/automation-logs/scheduled", {
+    const response = await fetch(`${API_URL}/api/automation-logs/scheduled`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
